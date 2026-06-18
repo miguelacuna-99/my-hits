@@ -1,0 +1,81 @@
+name: Build Unsigned IPA
+
+# Lanzamiento manual + automático en push a main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# ── Edita estas dos variables si cambias la ubicación del proyecto ──────────
+env:
+  PROJECT: ios/HitsterRap/HitsterRap.xcodeproj
+  SCHEME:  HitsterRap
+# ────────────────────────────────────────────────────────────────────────────
+
+jobs:
+  build-unsigned-ipa:
+    name: Build unsigned IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Selecciona Xcode 16.x (última versión estable de la serie 16)
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.x'
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      # Descarga el SDK de Spotify (Swift Package Manager) antes de compilar
+      - name: Resolve Swift Package dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme  "$SCHEME"
+
+      # Compila en Release para dispositivo real, SIN firmar
+      - name: Build (Release · iphoneos · unsigned)
+        run: |
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme  "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            EXPANDED_CODE_SIGN_IDENTITY="" \
+            build
+
+      # Empaqueta el .app en Payload/ y lo comprime como .ipa
+      - name: Package .app → .ipa
+        run: |
+          APP_PATH=$(find "$RUNNER_TEMP/build" \
+            -name "${SCHEME}.app" \
+            -type d \
+            | head -1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: no se encontró ${SCHEME}.app en DerivedData"
+            exit 1
+          fi
+
+          echo "App encontrado: $APP_PATH"
+
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r "${SCHEME}-unsigned.ipa" Payload/
+
+          echo "IPA generado: $(du -sh "${SCHEME}-unsigned.ipa" | cut -f1)"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SCHEME }}-unsigned-ipa
+          path: ${{ env.SCHEME }}-unsigned.ipa
+          retention-days: 30

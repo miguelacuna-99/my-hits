@@ -1,0 +1,12 @@
+# Claude Code
+.claude/
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/contents.xcworkspacedata
+DerivedData/
+build/
+*.ipa
+Payload/
+.DS_Store

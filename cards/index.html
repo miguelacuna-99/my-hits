@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HITSTER RAP — Generador de Cartas</title>
+  <style>
+    /* ═══════════════════════════════════════
+       VARIABLES — edita aquí el tamaño de carta
+       ═══════════════════════════════════════ */
+    :root {
+      --card-size: 65mm;
+      --qr-size:   47mm;   /* área blanca del QR dentro del anverso */
+
+      --col-front: #0f0f0f;
+      --col-back:  #1DB954;
+      --col-brand: #1DB954;
+    }
+
+    /* ─── Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Pantalla: base ─── */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #e4e4e4;
+      color: #111;
+    }
+
+    /* ─── Toolbar ─── */
+    #toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #121212;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.45);
+    }
+    #toolbar h1 {
+      font-size: .95rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    #count {
+      font-size: .8rem;
+      color: var(--col-brand);
+      font-weight: 700;
+    }
+    #print-btn {
+      margin-left: auto;
+      background: var(--col-brand);
+      color: #fff;
+      border: none;
+      padding: 8px 22px;
+      border-radius: 100px;
+      font-weight: 700;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    #print-btn:hover { opacity: .82; }
+
+    /* ─── Panel de error (CORS) ─── */
+    #err {
+      display: none;
+      max-width: 560px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 32px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.1);
+      line-height: 1.65;
+    }
+    #err h2 { margin-bottom: 10px; font-size: 1.05rem; }
+    #err code {
+      display: block;
+      background: #f3f3f3;
+      border-radius: 6px;
+      padding: 9px 14px;
+      font-size: .88rem;
+      margin: 6px 0 12px;
+      user-select: all;
+    }
+    #err .file-label {
+      display: inline-block;
+      margin-top: 18px;
+      background: var(--col-brand);
+      color: #fff;
+      padding: 9px 20px;
+      border-radius: 100px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: .85rem;
+    }
+    #json-file { display: none; }
+
+    /* ─── Grid en pantalla ─── */
+    .section-label {
+      text-align: center;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: #999;
+      padding: 28px 0 10px;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      padding: 0 20px 28px;
+    }
+
+    /* ─── Carta: base ─── */
+    .card {
+      width: var(--card-size);
+      height: var(--card-size);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    @media screen {
+      .card { border-radius: 3mm; }
+    }
+
+    /* ─── Anverso ─── */
+    .card.front {
+      background: var(--col-front);
+      color: #fff;
+    }
+    .qr-wrap {
+      width: var(--qr-size);
+      height: var(--qr-size);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2mm;
+      padding: 2.5mm;
+    }
+    /* qrcode.js añade canvas + img; forzamos que rellenen el contenedor */
+    .qr-wrap canvas,
+    .qr-wrap img {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .brand {
+      margin-top: 3.5mm;
+      font-size: 6.5pt;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--col-brand);
+    }
+    .card-id {
+      position: absolute;
+      bottom: 2.5mm;
+      right: 3mm;
+      font-size: 5.5pt;
+      color: rgba(255,255,255,.28);
+      font-weight: 600;
+    }
+
+    /* ─── Reverso ─── */
+    .card.back {
+      background: var(--col-back);
+      color: #fff;
+    }
+    .year {
+      font-size: 32pt;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      line-height: 1;
+    }
+    .sep {
+      width: 28mm;
+      height: .4mm;
+      background: rgba(255,255,255,.45);
+      margin: 3.5mm 0 3mm;
+    }
+    .title {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-align: center;
+      padding: 0 5mm;
+      line-height: 1.4;
+    }
+    .artist {
+      margin-top: 1.5mm;
+      font-size: 6.5pt;
+      font-weight: 400;
+      opacity: .82;
+      text-align: center;
+      padding: 0 5mm;
+    }
+
+    /* ─── Contenedor de impresión (invisible en pantalla) ─── */
+    #print-view { display: none; }
+
+    /* ═══════════════════════════════════════
+       IMPRESIÓN
+       ═══════════════════════════════════════
+
+       Ajuste de impresora recomendado:
+         Impresión dúplex → "Voltear por el BORDE LARGO" (Long-Edge Flip).
+
+       Por qué se invierten las columnas en los reversos:
+         Al voltear el papel por el borde largo (izquierdo), la columna izquierda
+         del reverso queda físicamente detrás de la columna DERECHA del anverso y
+         viceversa. Para compensarlo, en cada fila de la página de reversos
+         invertimos el orden de las columnas (ver función mirrorRows en JS).
+         Resultado: cada reverso queda exactamente detrás de su anverso.
+
+       Si el resultado sale desalineado, prueba el ajuste contrario:
+         "Voltear por el BORDE CORTO" (Short-Edge Flip) — en ese caso habría
+         que invertir las FILAS en lugar de las columnas (no es el modo por defecto
+         de este generador; comenta en GitHub si lo necesitas).
+       ═══════════════════════════════════════ */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+      body { background: white; }
+      #toolbar, #err, #screen-view { display: none !important; }
+      #print-view { display: block !important; }
+
+      @page { size: A4 portrait; margin: 0; }
+
+      .print-page {
+        width: 210mm;
+        height: 297mm;
+        display: grid;
+        grid-template-columns: repeat(3, var(--card-size));
+        grid-template-rows: repeat(4, var(--card-size));
+        justify-content: center;
+        align-content: center;
+        gap: 0;
+        page-break-after: always;
+        page-break-inside: avoid;
+      }
+      .print-page:last-child { page-break-after: avoid; }
+
+      /* Marca de corte: borde muy fino entre cartas */
+      .cell .card {
+        border: .3mm solid #ccc;
+        border-radius: 0;
+        overflow: hidden;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Toolbar ─── -->
+<nav id="toolbar">
+  <h1>Hitster Rap</h1>
+  <span id="count">—</span>
+  <button id="print-btn" onclick="window.print()">Imprimir</button>
+</nav>
+
+<!-- ─── Error CORS ─── -->
+<div id="err">
+  <h2>⚠️ No se pudo cargar <em>songs.json</em></h2>
+  <p>Los navegadores bloquean la carga de ficheros locales (protocolo <code style="display:inline;background:none;padding:0">file://</code>).
+     Tienes dos opciones:</p>
+
+  <p style="margin-top:16px"><strong>Opción A — Servidor local (recomendada):</strong></p>
+  <p>Abre una terminal en la raíz del repo y ejecuta:</p>
+  <code>python3 -m http.server 8080</code>
+  <p>Luego abre en el navegador:</p>
+  <code>http://localhost:8080/cards/</code>
+
+  <p style="margin-top:16px"><strong>Opción B — Selector de fichero:</strong></p>
+  <p>Selecciona manualmente el fichero <strong>data/songs.json</strong>.</p>
+  <label class="file-label" for="json-file">📂 Seleccionar songs.json</label>
+  <input type="file" id="json-file" accept=".json">
+</div>
+
+<!-- ─── Vista pantalla ─── -->
+<div id="screen-view" style="display:none">
+  <p class="section-label">Anversos — QR (frente de la carta)</p>
+  <div class="grid" id="grid-front"></div>
+
+  <p class="section-label">Reversos — Año / Título / Artista</p>
+  <div class="grid" id="grid-back"></div>
+</div>
+
+<!-- ─── Vista impresión (generada por JS) ─── -->
+<div id="print-view" aria-hidden="true"></div>
+
+<!-- qrcode.js via CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+/* ══════════════════════════════════════
+   Configuración
+   ══════════════════════════════════════ */
+const PER_ROW  = 3;   // columnas por hoja
+const PER_PAGE = 12;  // PER_ROW × 4 filas
+const QR_PX    = 220; // tamaño del canvas QR en píxeles (no afecta al tamaño impreso)
+
+/* ══════════════════════════════════════
+   Utilidades
+   ══════════════════════════════════════ */
+
+// Acepta URI (spotify:track:XXX) o URL larga y devuelve siempre el URI limpio.
+// Elimina el parámetro ?si=... que Spotify añade al copiar (es un tracker de sesión,
+// no forma parte del URI y puede causar problemas con el SDK de iOS).
+function toUri(input) {
+  if (!input) return '';
+  if (input.startsWith('spotify:track:')) return input.split('?')[0];
+  const m = input.match(/open\.spotify\.com\/track\/([A-Za-z0-9]+)/);
+  return m ? 'spotify:track:' + m[1] : input;
+}
+
+function makeQR(container, text) {
+  new QRCode(container, {
+    text,
+    width:  QR_PX,
+    height: QR_PX,
+    colorDark:  '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+}
+
+/* ══════════════════════════════════════
+   Constructores de carta
+   ══════════════════════════════════════ */
+
+function buildFront(song) {
+  const card = document.createElement('div');
+  card.className = 'card front';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'qr-wrap';
+  makeQR(wrap, toUri(song.spotifyUri));
+  card.appendChild(wrap);
+
+  const brand = document.createElement('div');
+  brand.className = 'brand';
+  brand.textContent = 'HITSTER RAP';
+  card.appendChild(brand);
+
+  const cid = document.createElement('div');
+  cid.className = 'card-id';
+  cid.textContent = '#' + song.id;
+  card.appendChild(cid);
+
+  return card;
+}
+
+function buildBack(song) {
+  const card = document.createElement('div');
+  card.className = 'card back';
+
+  const year = document.createElement('div');
+  year.className = 'year';
+  year.textContent = song.year;
+  card.appendChild(year);
+
+  const sep = document.createElement('div');
+  sep.className = 'sep';
+  card.appendChild(sep);
+
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = song.title;
+  card.appendChild(title);
+
+  const artist = document.createElement('div');
+  artist.className = 'artist';
+  artist.textContent = song.artist;
+  card.appendChild(artist);
+
+  return card;
+}
+
+/* ══════════════════════════════════════
+   Vista pantalla
+   ══════════════════════════════════════ */
+
+function renderScreen(songs) {
+  const gf = document.getElementById('grid-front');
+  const gb = document.getElementById('grid-back');
+  gf.innerHTML = gb.innerHTML = '';
+  songs.forEach(s => {
+    gf.appendChild(buildFront(s));
+    gb.appendChild(buildBack(s));
+  });
+  document.getElementById('count').textContent = songs.length + ' cartas';
+  document.getElementById('screen-view').style.display = 'block';
+  document.getElementById('err').style.display = 'none';
+}
+
+/* ══════════════════════════════════════
+   Vista impresión
+
+   LÓGICA DÚPLEX (Long-Edge Flip, portrait):
+   Cuando la hoja se voltea por el borde izquierdo (borde largo), la columna
+   izquierda del reverso pasa a estar físicamente detrás de la columna derecha
+   del anverso. Para que cada reverso quede detrás de su anverso correcto,
+   invertimos el orden de las columnas en cada fila de la página de reversos.
+
+   Ejemplo con 3 columnas:
+     Anverso fila 1: [ carta1 | carta2 | carta3 ]
+     Reverso fila 1: [ carta3 | carta2 | carta1 ]  ← columnas espejadas
+   ══════════════════════════════════════ */
+
+function mirrorRows(chunk) {
+  const out = [];
+  for (let r = 0; r < 4; r++) {
+    const row = chunk.slice(r * PER_ROW, (r + 1) * PER_ROW);
+    while (row.length < PER_ROW) row.push(null); // rellenar fila incompleta
+    row.reverse();
+    out.push(...row);
+  }
+  return out;
+}
+
+function makePrintPage(cells) {
+  const page = document.createElement('div');
+  page.className = 'print-page';
+  cells.forEach(content => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    if (content) cell.appendChild(content);
+    page.appendChild(cell);
+  });
+  return page;
+}
+
+function renderPrint(songs) {
+  const pv = document.getElementById('print-view');
+  pv.innerHTML = '';
+
+  for (let i = 0; i < songs.length; i += PER_PAGE) {
+    const chunk = songs.slice(i, i + PER_PAGE);
+    while (chunk.length < PER_PAGE) chunk.push(null); // pad a página completa
+
+    // Página de anversos
+    pv.appendChild(makePrintPage(chunk.map(s => s ? buildFront(s) : null)));
+
+    // Página de reversos (columnas espejadas)
+    pv.appendChild(makePrintPage(mirrorRows(chunk).map(s => s ? buildBack(s) : null)));
+  }
+}
+
+/* ══════════════════════════════════════
+   Arranque
+   ══════════════════════════════════════ */
+
+function init(songs) {
+  renderScreen(songs);
+  renderPrint(songs);
+}
+
+// Cargar songs.json automáticamente (requiere servidor local)
+fetch('../data/songs.json')
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(init)
+  .catch(() => {
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('count').textContent = 'error al cargar';
+  });
+
+// Fallback: selector de fichero manual
+document.getElementById('json-file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try { init(JSON.parse(ev.target.result)); }
+    catch (err) { alert('JSON inválido: ' + err.message); }
+  };
+  reader.readAsText(f);
+});
+</script>
+
+</body>
+</html>
