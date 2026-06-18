@@ -1,0 +1,58 @@
+name: HitsterRap
+
+options:
+  bundleIdPrefix: com.miguel
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+# ── SDK de Spotify via Swift Package Manager ─────────────────────────────────
+# XcodeGen descarga e integra el xcframework automáticamente; no hace falta
+# tener el fichero en el repo ni descargarlo manualmente en CI.
+packages:
+  SpotifyiOS:
+    url: https://github.com/spotify/ios-sdk
+    from: "5.0.1"
+
+targets:
+  HitsterRap:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+
+    # Fuentes Swift — todos los .swift dentro de ios/HitsterRap/
+    sources:
+      - path: ios/HitsterRap
+        excludes:
+          - Info.plist   # generado por xcodegen; no incluir como fuente
+
+    # Info.plist generado por XcodeGen (no lo edites a mano; edita project.yml)
+    info:
+      path: ios/HitsterRap/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+
+        # Permiso de cámara (obligatorio para VisionKit QR scanner)
+        NSCameraUsageDescription: "Necesario para escanear los códigos QR de las cartas."
+
+        # Permite consultar si la app de Spotify está instalada
+        LSApplicationQueriesSchemes:
+          - spotify
+
+        # URL scheme para el redirect de autenticación de Spotify
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLSchemes:
+              - hitsterrap
+
+    dependencies:
+      - package: SpotifyiOS
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.miguel.HitsterRap
+        SWIFT_VERSION: "5"                 # Swift 5 mode (evita strict concurrency de Swift 6)
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        TARGETED_DEVICE_FAMILY: "1"        # iPhone únicamente

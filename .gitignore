@@ -1,12 +1,18 @@
 # Claude Code
 .claude/
 
-# Xcode
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
-*.xcworkspace/contents.xcworkspacedata
+# Xcode — el .xcodeproj lo genera XcodeGen en cada build; no se commitea
+*.xcodeproj/
+*.xcworkspace/
 DerivedData/
 build/
+
+# Ficheros generados por XcodeGen
+ios/HitsterRap/Info.plist
+
+# Artefactos de empaquetado
 *.ipa
 Payload/
+
+# macOS
 .DS_Store

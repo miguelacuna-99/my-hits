@@ -6,10 +6,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# ── Edita estas dos variables si cambias la ubicación del proyecto ──────────
+# ── El .xcodeproj lo genera XcodeGen en CI; no está commiteado ──────────────
 env:
-  PROJECT: ios/HitsterRap/HitsterRap.xcodeproj
-  SCHEME:  HitsterRap
+  SCHEME: HitsterRap
 # ────────────────────────────────────────────────────────────────────────────
 
 jobs:
@@ -30,18 +29,26 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      # Descarga el SDK de Spotify (Swift Package Manager) antes de compilar
+      # Instala XcodeGen para generar el .xcodeproj desde project.yml
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Genera HitsterRap.xcodeproj en la raíz del repo a partir de project.yml
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      # Descarga el SDK de Spotify via SPM antes de compilar
       - name: Resolve Swift Package dependencies
         run: |
           xcodebuild -resolvePackageDependencies \
-            -project "$PROJECT" \
+            -project HitsterRap.xcodeproj \
             -scheme  "$SCHEME"
 
       # Compila en Release para dispositivo real, SIN firmar
       - name: Build (Release · iphoneos · unsigned)
         run: |
           xcodebuild \
-            -project "$PROJECT" \
+            -project HitsterRap.xcodeproj \
             -scheme  "$SCHEME" \
             -configuration Release \
             -sdk iphoneos \
