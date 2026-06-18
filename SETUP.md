@@ -16,7 +16,7 @@ Requisitos previos:
 3. Rellena:
    - **App name:** Hitster Rap (o el que prefieras)
    - **App description:** Juego de cartas personal
-   - **Redirect URIs:** `hitsterrap://spotify-callback` → pulsa **Add**
+   - **Redirect URIs:** `my-hits://spotify-callback` → pulsa **Add**
    - **APIs used:** marca **iOS**
 4. Acepta los términos y pulsa **Save**.
 5. En la pantalla de tu app, copia el **Client ID** (cadena de 32 caracteres).
@@ -27,7 +27,7 @@ Requisitos previos:
 
 **No commiteas ningún `.xcodeproj`.** El fichero `project.yml` de la raíz del repo describe
 completamente la app: target, bundle ID, deployment target, fuentes Swift, Info.plist
-(permisos de cámara, URL scheme `hitsterrap://`, consulta de Spotify), y la dependencia
+(permisos de cámara, URL scheme `my-hits://`, consulta de Spotify), y la dependencia
 del SDK de Spotify via Swift Package Manager.
 
 El workflow de CI ejecuta `xcodegen generate` antes de compilar, lo que crea
@@ -40,7 +40,7 @@ El workflow de CI ejecuta `xcodegen generate` antes de compilar, lo que crea
 | Bundle ID | `com.miguel.HitsterRap` |
 | Deployment target | iOS 16.0 |
 | SDK de Spotify | `github.com/spotify/ios-sdk` v5.0.1 via SPM |
-| URL scheme | `hitsterrap` (redirect de autenticación Spotify) |
+| URL scheme | `my-hits` (redirect de autenticación Spotify) |
 | Permiso de cámara | `NSCameraUsageDescription` en Info.plist generado |
 
 Si necesitas cambiar el Bundle ID (por ejemplo, para firmarlo con tu Apple ID),

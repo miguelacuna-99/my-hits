@@ -16,7 +16,7 @@ final class SpotifyManager: NSObject, ObservableObject {
     // TODO: Pega aquí tu Client ID (ver SETUP.md → paso 1)
     private let clientID    = "YOUR_CLIENT_ID"
     // Debe coincidir exactamente con el Redirect URI del Spotify Dashboard
-    private let redirectURI = URL(string: "hitsterrap://spotify-callback")!
+    private let redirectURI = URL(string: "my-hits://spotify-callback")!
 
     @Published private(set) var state: SpotifyState = .disconnected
 
